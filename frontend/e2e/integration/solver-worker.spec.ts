@@ -19,50 +19,23 @@ import { test, expect } from '../fixtures'
 
 const WORKER_BUDGET_MS = 15000
 
-// Skipped when PLAYWRIGHT_BASE_URL is unset: that is the config-spawned dev
-// server (playwright.config.ts webServer), and the suite cannot exercise the
-// real worker there. The discriminator is the env var being unset, not the
-// server's identity: pointing PLAYWRIGHT_BASE_URL at a manually spawned dev
-// server leaves the tests running, and they fail with the same signature.
-// Measured verdict (BUG-28): Vite 8.1.4's dev server
-// rewrites `new Worker(new URL('./wasm.worker.ts', import.meta.url))` (no
-// options) to a `?worker_file&type=classic` URL that serves the worker entry
-// as an UNBUNDLED module, so its `import`/`export` statements reach a classic
-// worker and the browser kills it with "Cannot use import statement outside a
-// module". The client's creation handshake rejects on the worker's error
-// event (handleError inside createWorker) and discards the worker, and the
-// poll fails with "worker.evaluate: Target page, context or browser has been
-// closed" while the page itself stays alive. Reproduced 4/4 on chrome-desktop
-// (config webServer twice, manual server cold and warm; ENABLE_PWA_IN_DEV on
-// and off; service worker had no registrations in any run); `vite preview`
-// control passes 2/2 with the same spec. worker.format: 'iife' and
-// worker.plugins are both no-ops on this dev path, so there is no dev-config
-// repair; the semantic fix (passing { type: 'module' } at the constructor) is
-// a production change and was flagged, not made. Runs against
-// PLAYWRIGHT_BASE_URL (every CI path: docker-compose.test.yml and deploy.yml
-// set it against built artifacts) are unaffected. The negative-control test
-// is skipped under dev too: its main-thread fallback fetches the gitignored
-// wasm artifacts (wasm_exec.js, sudoku.wasm) that fresh dev checkouts lack
-// (measured 404).
+// Budget history (TEST-13, measured 2026-08-22 against the then-shipped
+// classic production worker under a production preview, --workers=1): time
+// from navigation to SudokuWasm inside the worker was 836-1605ms on
+// chrome-desktop (median 1210), 759-1583ms on pixel-5 (median 884), and
+// 2329-3084ms on iphone-12/WebKit (median 2578) — all comfortably inside this
+// 15s budget, so no project was skipped and the budget needed no raise. Those numbers are SUPERSEDED by the DEC-2 module-worker switch
+// (2026-09-21): the worker now loads wasm_exec.js via a dynamic import and
+// its fetch/compile profile may differ. Budget validation for the module
+// worker is this spec passing on all three projects against both transports
+// (vite preview at base / and /sudoku/, and the dev server); a fresh
+// measurement campaign is deferred, not required. The 5s readiness poll in
+// wasm.worker.ts bounds only the Go-boot-to-publish phase, which never
+// approached 5s on any project, so it is not the binding constraint.
+// Emulated-mobile caveat: the numbers above are this host's protocol
+// emulation, not real-device CPU.
+
 test.describe('Solver worker mode', () => {
-  test.skip(
-    !process.env['PLAYWRIGHT_BASE_URL'],
-    'Vite dev server cannot serve this classic worker; run against a built preview (BUG-28)',
-  )
-
-  // Runs on every project, measured not assumed (TEST-13, production preview,
-  // --workers=1): time from navigation to SudokuWasm inside the worker is
-  // 836-1605ms on chrome-desktop (median 1210), 759-1583ms on pixel-5 (median
-  // 884), and 2329-3084ms on iphone-12/WebKit (median 2578) — all comfortably
-  // inside this spec's 15s budget, so no project is skipped and the budget
-  // needs no raise. WebKit is measured, not inferred: the production worker is
-  // classic there too (typeof importScripts === 'function'), and wasm_exec.js
-  // loads via importScripts on every project. The 5s readiness poll in
-  // wasm.worker.ts bounds only the Go-boot-to-publish phase, which never
-  // approached 5s on any project, so it is not the binding constraint.
-  // Emulated-mobile caveat: these numbers are this host's protocol emulation,
-  // not real-device CPU.
-
   test('initializes the WASM worker and keeps the solver off the main thread', async ({ page }) => {
     const workerPromise = page.waitForEvent('worker', { timeout: WORKER_BUDGET_MS })
 

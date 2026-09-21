@@ -8,6 +8,7 @@
 /// <reference lib="webworker" />
 
 import { instantiateSudokuWasm, type GoInstance } from './wasm-bootstrap'
+import { loadGoRuntime } from './wasm-exec-loader'
 import type { SudokuWasmAPI } from '../types/sudoku'
 import type { WorkerRequest, WorkerResponse } from './workerProtocol'
 
@@ -32,29 +33,13 @@ async function initializeWasm(): Promise<SudokuWasmAPI> {
 
   initPromise = (async () => {
     try {
-      // Load wasm_exec.js for Go runtime. Prefer importScripts (classic
-      // worker); when it is unavailable, disallowed (module workers), or
-      // fails, fall back to fetching and evaluating the script.
-      let loadedWasmExec = false
-      try {
-        importScripts('/wasm_exec.js')
-        loadedWasmExec = true
-      } catch {
-        // importScripts threw, likely because this is a module worker where
-        // importScripts is not allowed
-      }
-
-      if (!loadedWasmExec) {
-        // Fetch and evaluate the wasm_exec.js script so it defines `Go` in the worker scope
-        const resp = await fetch('/wasm_exec.js')
-        if (!resp.ok) {
-          throw new Error(`Failed to fetch wasm_exec.js: ${resp.status}`)
-        }
-        const wasmExecText = await resp.text()
-        // Execute the script in global scope so it attaches `Go` to the worker global.
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        new Function(wasmExecText)()
-      }
+      // Load wasm_exec.js by executing it as an ES module. This is a module
+      // worker, so the classic script-loading global does not exist here, and
+      // the worker script's CSP carries no 'unsafe-eval', so a fetch-and-eval
+      // would be blocked. BASE_URL is inlined at build (/sudoku/ on Pages, /
+      // elsewhere), so both assets resolve under the deploy base like the
+      // main thread's.
+      await loadGoRuntime(`${import.meta.env.BASE_URL}wasm_exec.js`)
 
       if (typeof Go === 'undefined') {
         throw new Error('Go runtime not available after loading wasm_exec.js')
@@ -66,7 +51,7 @@ async function initializeWasm(): Promise<SudokuWasmAPI> {
       // bootstrap. The readiness strategy (polling) and the API global reader
       // are worker-specific.
       return await instantiateSudokuWasm({
-        wasmUrl: '/sudoku.wasm',
+        wasmUrl: `${import.meta.env.BASE_URL}sudoku.wasm`,
         go,
         waitForReadiness: waitForWasmReadyPoll,
         getApi: () => SudokuWasm,

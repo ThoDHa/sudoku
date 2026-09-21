@@ -1728,13 +1728,15 @@ describe('worker-client advanced scenarios', () => {
       }
     })
 
-    it('constructs the worker from the wasm.worker module URL', async () => {
+    it('constructs the worker from the wasm.worker module URL as a module worker', async () => {
       vi.resetModules()
 
       let constructedUrl: URL | string | undefined
+      let constructedOptions: WorkerOptions | undefined
       globalThis.Worker = class extends MockWorker {
         constructor(url: URL | string, options?: WorkerOptions) {
           constructedUrl = url
+          constructedOptions = options
           super(url, options)
           createdWorkers.push(this)
         }
@@ -1748,6 +1750,12 @@ describe('worker-client advanced scenarios', () => {
       // blanked specifier would fall back to the importer's own URL.
       expect(constructedUrl).toBeInstanceOf(URL)
       expect((constructedUrl as URL).pathname.endsWith('/wasm.worker.ts')).toBe(true)
+
+      // The module-worker decision (DEC-2): the dev server serves the entry
+      // as ESM and the build emits an ESM chunk, so a classic-runtime worker
+      // dies at parse (BUG-28). A regression to no-options or `type: classic`
+      // must fail here before it fails everywhere else.
+      expect(constructedOptions).toEqual({ type: 'module' })
 
       terminateWorker()
     })

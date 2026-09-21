@@ -134,8 +134,12 @@ function generateRequestId(): string {
  * Create and initialize worker
  */
 async function createWorker(): Promise<Worker> {
-  // Use classic worker (not module) to support importScripts for wasm_exec.js
-  const newWorker = new Worker(new URL('./wasm.worker.ts', import.meta.url))
+  // Module worker (BUG-28, DEC-2): the dev server serves the worker entry as
+  // ESM and the build emits an ESM chunk, so a classic worker dies at parse.
+  // wasm_exec.js loads via the CSP-legal dynamic import in wasm-exec-loader.
+  const newWorker = new Worker(new URL('./wasm.worker.ts', import.meta.url), {
+    type: 'module',
+  })
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {

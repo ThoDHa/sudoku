@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
+// The worker's single wasm_exec.js load path is the loader module; mocking it
+// keeps every test off the network and lets tests assert the load contract.
+vi.mock('./wasm-exec-loader', () => ({
+  loadGoRuntime: vi.fn(),
+}))
+
 interface WorkerGlobalMock {
   postMessage: ReturnType<typeof vi.fn>
   close: ReturnType<typeof vi.fn>
@@ -40,17 +46,10 @@ function installWorkerGlobals(): WorkerGlobalMock {
   return sink
 }
 
-function installWasmRuntimeMocks(): {
-  importScripts: ReturnType<typeof vi.fn>
+async function installWasmRuntimeMocks(): Promise<{
+  loadGoRuntimeMock: ReturnType<typeof vi.fn>
   fetchMock: ReturnType<typeof vi.fn>
-} {
-  const importScripts = vi.fn()
-  Object.defineProperty(globalThis, 'importScripts', {
-    value: importScripts,
-    configurable: true,
-    writable: true,
-  })
-
+}> {
   mockWasmApi = {
     findNextMove: vi.fn(() => ({
       move: { technique: 'naked-single' },
@@ -97,13 +96,18 @@ function installWasmRuntimeMocks(): {
     writable: true,
   })
 
-  return { importScripts, fetchMock }
+  const loaderModule = await import('./wasm-exec-loader')
+  const loadGoRuntimeMock = vi.mocked(loaderModule.loadGoRuntime)
+  loadGoRuntimeMock.mockReset()
+  loadGoRuntimeMock.mockResolvedValue(undefined)
+
+  return { loadGoRuntimeMock, fetchMock }
 }
 
 function clearWorkerGlobals() {
   posted = []
   vi.resetModules()
-  for (const key of ['postMessage', 'close', 'importScripts', 'Go', 'SudokuWasm', 'fetch']) {
+  for (const key of ['postMessage', 'close', 'Go', 'SudokuWasm', 'fetch']) {
     try {
       Object.defineProperty(globalThis, key, { value: undefined, configurable: true })
     } catch {
@@ -124,7 +128,7 @@ describe('wasm.worker message protocol', () => {
   beforeEach(async () => {
     posted = []
     sink = installWorkerGlobals()
-    installWasmRuntimeMocks()
+    await installWasmRuntimeMocks()
   })
 
   afterEach(() => {
@@ -227,10 +231,10 @@ describe('wasm.worker message protocol', () => {
 })
 
 describe('wasm.worker init failure', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     posted = []
     installWorkerGlobals()
-    installWasmRuntimeMocks()
+    await installWasmRuntimeMocks()
     // Force the "Go runtime not available" branch: remove Go after the mocks
     // installed it, so the worker sees typeof Go === 'undefined'.
     Object.defineProperty(globalThis, 'Go', { value: undefined, configurable: true })
@@ -256,11 +260,11 @@ describe('wasm.worker init failure', () => {
 describe('wasm.worker init polling timeout', () => {
   let sink: WorkerGlobalMock
 
-  beforeEach(() => {
+  beforeEach(async () => {
     posted = []
     vi.useFakeTimers()
     sink = installWorkerGlobals()
-    installWasmRuntimeMocks()
+    await installWasmRuntimeMocks()
 
     class SilentGoMock {
       importObject = {}
@@ -301,12 +305,12 @@ describe('wasm.worker init polling timeout', () => {
 })
 
 describe('wasm.worker mutation kills', () => {
-  let runtime: ReturnType<typeof installWasmRuntimeMocks>
+  let runtime: Awaited<ReturnType<typeof installWasmRuntimeMocks>>
 
-  beforeEach(() => {
+  beforeEach(async () => {
     posted = []
     installWorkerGlobals()
-    runtime = installWasmRuntimeMocks()
+    runtime = await installWasmRuntimeMocks()
   })
 
   afterEach(() => {
@@ -338,20 +342,22 @@ describe('wasm.worker mutation kills', () => {
     expect(streamingMock()).toHaveBeenCalledTimes(1)
   })
 
-  it('loads wasm_exec.js via importScripts with the exact path (L148)', async () => {
+  it('loads wasm_exec.js through the loader with the BASE_URL-prefixed path (L148)', async () => {
     await load()
     post({ type: 'init', id: 'i3' })
     await waitForReady('i3')
 
-    expect(runtime.importScripts).toHaveBeenCalledWith('/wasm_exec.js')
+    expect(runtime.loadGoRuntimeMock).toHaveBeenCalledWith(
+      `${import.meta.env.BASE_URL}wasm_exec.js`,
+    )
   })
 
-  it('fetches the WASM binary from the exact path (L174)', async () => {
+  it('fetches the WASM binary from the BASE_URL-prefixed path (L174)', async () => {
     await load()
     post({ type: 'init', id: 'i4' })
     await waitForReady('i4')
 
-    expect(runtime.fetchMock).toHaveBeenCalledWith('/sudoku.wasm')
+    expect(runtime.fetchMock).toHaveBeenCalledWith(`${import.meta.env.BASE_URL}sudoku.wasm`)
   })
 
   it('posts an error when the WASM response is not ok (L175)', async () => {
@@ -391,20 +397,21 @@ describe('wasm.worker mutation kills', () => {
     expect(instantiateMock).toHaveBeenCalledTimes(1)
   })
 
-  it('fetches wasm_exec.js fallback when importScripts throws (L156)', async () => {
-    runtime.importScripts.mockImplementation(() => {
-      throw new Error('importScripts denied')
-    })
-    runtime.fetchMock.mockImplementation(
-      async () => ({ ok: true, text: async () => '' }) as Response,
-    )
+  it('propagates a loader rejection as the wasm_exec load error (L156)', async () => {
+    // The loader is the only wasm_exec path; a failure to import the module
+    // surfaces as the init error with the loader's message.
+    runtime.loadGoRuntimeMock.mockRejectedValue(new Error('wasm_exec.js import failed'))
 
     await load()
     posted.length = 0
     post({ type: 'init', id: 'i7' })
 
     await vi.waitFor(() => {
-      expect(runtime.fetchMock).toHaveBeenCalledWith('/wasm_exec.js')
+      expect(posted).toContainEqual({
+        type: 'error',
+        id: 'i7',
+        error: 'wasm_exec.js import failed',
+      })
     })
   })
 
@@ -467,11 +474,11 @@ describe('wasm.worker mutation kills', () => {
 })
 
 describe('wasm.worker polling timeout boundary', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     posted = []
     vi.useFakeTimers()
     installWorkerGlobals()
-    installWasmRuntimeMocks()
+    await installWasmRuntimeMocks()
 
     class SilentGoMock {
       importObject = {}
@@ -507,11 +514,11 @@ describe('wasm.worker polling timeout boundary', () => {
 })
 
 describe('wasm.worker init readiness during polling', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     posted = []
     vi.useFakeTimers()
     installWorkerGlobals()
-    installWasmRuntimeMocks()
+    await installWasmRuntimeMocks()
 
     // A Go runtime that publishes SudokuWasm asynchronously, AFTER the worker's
     // immediate readiness check, so the polling interval is what observes it.
@@ -596,12 +603,12 @@ describe('wasm.worker init readiness during polling', () => {
 })
 
 describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
-  let runtime: ReturnType<typeof installWasmRuntimeMocks>
+  let runtime: Awaited<ReturnType<typeof installWasmRuntimeMocks>>
 
-  beforeEach(() => {
+  beforeEach(async () => {
     posted = []
     installWorkerGlobals()
-    runtime = installWasmRuntimeMocks()
+    runtime = await installWasmRuntimeMocks()
   })
 
   afterEach(() => {
@@ -635,39 +642,19 @@ describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
     expect(streamingMock()).toHaveBeenCalledTimes(1)
   })
 
-  it('uses fetch fallback when importScripts is undefined (L145)', async () => {
-    // Remove importScripts entirely. The original enters the fallback fetch path
-    // (loadedWasmExec stays false); the `= true` mutant skips the fallback, leaving
-    // Go undefined so init fails.
-    Object.defineProperty(globalThis, 'importScripts', {
-      value: undefined,
-      configurable: true,
-      writable: true,
-    })
-    runtime.fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/wasm_exec.js') return { ok: true, text: async () => '' } as Response
-      return { ok: true } as Response
-    })
-
+  it('reaches instantiation through the loader when the loader resolves (L145)', async () => {
+    // The loader resolving is what lets init proceed to the Go check and the
+    // WASM fetch; a mutant that skips the loader leaves Go undefined and init
+    // fails instead of reaching ready.
     await load()
     posted.length = 0
     post({ type: 'init', id: 'i-fb' })
 
     await waitForReady('i-fb')
-    expect(runtime.fetchMock).toHaveBeenCalledWith('/wasm_exec.js')
+    expect(runtime.loadGoRuntimeMock).toHaveBeenCalledTimes(1)
   })
 
-  it('does not throw when wasm_exec.js fallback response is ok (L159)', async () => {
-    // Make importScripts throw so the fallback fetch path runs. The mutant
-    // `if (resp.ok)` inverts the check and throws on a successful response.
-    runtime.importScripts.mockImplementation(() => {
-      throw new Error('denied')
-    })
-    runtime.fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/wasm_exec.js') return { ok: true, text: async () => '' } as Response
-      return { ok: true } as Response
-    })
-
+  it('reports ready when the loader resolves and Go publishes the API (L159)', async () => {
     await load()
     posted.length = 0
     post({ type: 'init', id: 'i-ok' })
@@ -675,14 +662,8 @@ describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
     await waitForReady('i-ok')
   })
 
-  it('throws when wasm_exec.js fallback response is not ok (L159,L160)', async () => {
-    runtime.importScripts.mockImplementation(() => {
-      throw new Error('denied')
-    })
-    runtime.fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/wasm_exec.js') return { ok: false, status: 503 } as Response
-      return { ok: true } as Response
-    })
+  it('surfaces a loader failure as an init error (L159,L160)', async () => {
+    runtime.loadGoRuntimeMock.mockRejectedValue(new Error('wasm_exec.js fetch failed: 503'))
 
     await load()
     posted.length = 0
@@ -692,7 +673,7 @@ describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
       expect(posted).toContainEqual({
         type: 'error',
         id: 'i-bad',
-        error: 'Failed to fetch wasm_exec.js: 503',
+        error: 'wasm_exec.js fetch failed: 503',
       })
     })
   })
@@ -700,12 +681,6 @@ describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
   it('throws "WASM API not available" when init fails before findNextMove (L257,L258)', async () => {
     // Force initialization to fail by removing Go after the mocks install it,
     // so initializeWasm rejects and wasmApi stays null when findNextMove runs.
-    runtime.importScripts.mockImplementation(() => {
-      throw new Error('denied')
-    })
-    runtime.fetchMock.mockImplementation(async () => {
-      return { ok: true, text: async () => '' } as Response
-    })
     Object.defineProperty(globalThis, 'Go', { value: undefined, configurable: true })
 
     await load()
@@ -726,12 +701,6 @@ describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
   })
 
   it('throws "WASM API not available" when init fails before solveAll (L286,L287)', async () => {
-    runtime.importScripts.mockImplementation(() => {
-      throw new Error('denied')
-    })
-    runtime.fetchMock.mockImplementation(async () => {
-      return { ok: true, text: async () => '' } as Response
-    })
     Object.defineProperty(globalThis, 'Go', { value: undefined, configurable: true })
 
     await load()
