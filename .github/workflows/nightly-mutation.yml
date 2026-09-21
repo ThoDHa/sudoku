@@ -760,9 +760,6 @@ jobs:
           if [ -d ../prev-shards ]; then
             corroborate="$corroborate --previous-shards-dir ../prev-shards"
           fi
-          if [ -d ../frontend-shards ]; then
-            corroborate="$corroborate --frontend-dir ../frontend-shards"
-          fi
           if [ -d ../prev-frontend-shards ]; then
             corroborate="$corroborate --previous-frontend-dir ../prev-frontend-shards"
           fi
