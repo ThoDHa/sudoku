@@ -17,7 +17,6 @@
  */
 
 import type { Page, TestInfo } from '@playwright/test'
-import * as fs from 'fs'
 
 /**
  * Install the in-page event log. Must be called before page.goto so the log
@@ -105,11 +104,10 @@ export async function dumpNavLog(page: Page, testInfo: TestInfo, label: string):
     entries = 'unavailable (page navigating or closed)'
   }
   try {
-    const body =
-      typeof entries === 'string' ? entries : (JSON.stringify(entries, null, 2) ?? 'null')
-    const path = testInfo.outputPath(`navlog-${label}.json`)
-    fs.writeFileSync(path, body)
-    await testInfo.attach(`navlog-${label}`, { path, contentType: 'text/plain' })
+    await testInfo.attach(`navlog-${label}`, {
+      body: typeof entries === 'string' ? entries : (JSON.stringify(entries, null, 2) ?? 'null'),
+      contentType: 'text/plain',
+    })
   } catch (dumpError) {
     console.warn(`navlog dump for ${label} failed (diagnostic only): ${String(dumpError)}`)
   }
