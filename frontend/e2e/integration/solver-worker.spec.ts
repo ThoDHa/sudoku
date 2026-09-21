@@ -19,6 +19,13 @@ import { test, expect } from '../fixtures'
 
 const WORKER_BUDGET_MS = 15000
 
+// Routes are joined onto the effective base the way e2e/global-setup.ts joins
+// its warmup routes: a base-path baseURL (the /sudoku/ Pages transport,
+// mirroring deploy.yml) ends in '/', and Playwright resolves a leading-slash
+// goto against the ORIGIN root, which under that base never reaches the app.
+const appBase = (process.env['PLAYWRIGHT_BASE_URL'] || 'http://localhost:5173').replace(/\/+$/, '')
+const gameRoute = (path: string): string => `${appBase}${path}`
+
 // Budget history (TEST-13, measured 2026-08-22 against the then-shipped
 // classic production worker under a production preview, --workers=1): time
 // from navigation to SudokuWasm inside the worker was 836-1605ms on
@@ -39,7 +46,7 @@ test.describe('Solver worker mode', () => {
   test('initializes the WASM worker and keeps the solver off the main thread', async ({ page }) => {
     const workerPromise = page.waitForEvent('worker', { timeout: WORKER_BUDGET_MS })
 
-    await page.goto('/12345')
+    await page.goto(gameRoute('/12345'))
 
     const worker = await workerPromise
     expect(worker.url()).toMatch(/wasm\.worker/)
@@ -71,7 +78,7 @@ test.describe('Solver worker mode', () => {
       delete (window as { Worker?: unknown }).Worker
     })
 
-    await page.goto('/12345')
+    await page.goto(gameRoute('/12345'))
 
     await expect
       .poll(() => page.evaluate(() => typeof (window as { SudokuWasm?: unknown }).SudokuWasm), {
