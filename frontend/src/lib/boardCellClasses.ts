@@ -106,7 +106,9 @@ export const isHighlightedSecondary = (
 /** Whether the cell is filled with the highlighted digit or holds it as a note. */
 export const cellHasHighlightedDigit = (ctx: BoardCellContext, idx: number): boolean => {
   const highlightedDigit = ctx.highlightedDigit
-  if (highlightedDigit === null) return false
+  // 0 is the no-specific-digit sentinel the rest of this module uses for move
+  // highlights, so a null-ish highlight matches nothing.
+  if (!highlightedDigit) return false
   return (
     ctx.board[idx] === highlightedDigit || hasCandidate(ctx.candidates[idx] || 0, highlightedDigit)
   )

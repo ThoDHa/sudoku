@@ -395,6 +395,14 @@ describe('cellHasHighlightedDigit', () => {
     })
     expect(cellHasHighlightedDigit(ctx, IDX(0, 0))).toBe(false)
   })
+
+  it('treats a 0 highlighted digit as no digit rather than matching empty cells', () => {
+    // 0 is the no-specific-digit sentinel move highlights carry; an empty
+    // cell holds 0, so forwarding the sentinel would light up every empty
+    // cell as a digit match.
+    const ctx = baseContext({ highlightedDigit: 0 })
+    expect(cellHasHighlightedDigit(ctx, IDX(0, 0))).toBe(false)
+  })
 })
 
 describe('isPeerOfSelected', () => {
