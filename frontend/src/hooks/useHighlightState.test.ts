@@ -485,6 +485,33 @@ describe('useHighlightState', () => {
       expect(result.current.selectedMoveIndex).toBeNull()
     })
 
+    it('clears a transient move highlight and its index through every surviving-pair action', () => {
+      const pairActions = [
+        'clearTransientMoveHighlight',
+        'clearAfterUserCandidateOp',
+        'clearHighlightsKeepSelection',
+        'clearAllAndDeselectKeepPersistent',
+      ] as const
+
+      for (const action of pairActions) {
+        const { result, unmount } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.setMoveHighlight(createMockMoveHighlight(), 7)
+        })
+        expect(result.current.currentHighlight).not.toBeNull()
+        expect(result.current.selectedMoveIndex).toBe(7)
+
+        act(() => {
+          result.current[action]()
+        })
+        expect(result.current.currentHighlight).toBeNull()
+        expect(result.current.selectedMoveIndex).toBeNull()
+
+        unmount()
+      }
+    })
+
     it('increments version on setMoveHighlight', () => {
       const { result } = renderHook(() => useHighlightState())
 

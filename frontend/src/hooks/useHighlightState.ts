@@ -63,7 +63,12 @@ export type HighlightAction =
 
   // Move highlight actions
   /** persistent: the highlight is a regular hint and survives ordinary interactions */
-  | { type: 'SET_MOVE_HIGHLIGHT'; move: MoveHighlight; index?: number; persistent?: boolean }
+  | {
+      type: 'SET_MOVE_HIGHLIGHT'
+      move: MoveHighlight
+      index?: number | undefined
+      persistent?: boolean
+    }
   | { type: 'CLEAR_MOVE_HIGHLIGHT' }
   // Clears the move highlight only when it is not persistent (undo/redo cleanup)
   | { type: 'CLEAR_TRANSIENT_MOVE_HIGHLIGHT' }
@@ -110,6 +115,11 @@ function survivingHighlightPair(state: HighlightState): {
   selectedMoveIndex: number | null
 } {
   if (state.highlightIsPersistent) {
+    // The literal below is the spread's no-op for persistent state: every field
+    // it names repeats what ...state already carries at the call sites, so the
+    // Stryker replacement {} is observationally identical. The transient shape
+    // is the only observable one and dies to the transient-clear tests.
+    // Stryker disable next-line ObjectLiteral
     return { currentHighlight: state.currentHighlight, selectedMoveIndex: state.selectedMoveIndex }
   }
   return { currentHighlight: null, selectedMoveIndex: null }
@@ -372,21 +382,14 @@ export function useHighlightState() {
         dispatch({ type: 'TOGGLE_DIGIT_HIGHLIGHT', digit })
       },
 
-      // Move highlight
+      // Move highlight. Both setters dispatch index unconditionally: the
+      // reducer reads it through `action.index ?? state.selectedMoveIndex`, so
+      // an explicit undefined dispatch is identical to omitting the property.
       setMoveHighlight: (move: MoveHighlight, index?: number) => {
-        // Stryker disable next-line ConditionalExpression: the surviving replacement dispatches {index: undefined}, which the reducer reads exactly like a missing index property (action.index ?? fallback); the opposite replacement drops the index from every caller and dies to the selection tests
-        if (index !== undefined) {
-          dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index })
-        } else {
-          dispatch({ type: 'SET_MOVE_HIGHLIGHT', move })
-        }
+        dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index })
       },
       setPersistentMoveHighlight: (move: MoveHighlight, index?: number) => {
-        if (index !== undefined) {
-          dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index, persistent: true })
-        } else {
-          dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, persistent: true })
-        }
+        dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index, persistent: true })
       },
       clearMoveHighlight: () => {
         dispatch({ type: 'CLEAR_MOVE_HIGHLIGHT' })
