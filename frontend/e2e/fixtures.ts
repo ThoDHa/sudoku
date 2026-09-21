@@ -18,12 +18,34 @@ declare global {
 
 type SudokuFixtures = {
   _captureConsole: void
+  _passthroughRoute: void
   skipOnboarding: void
   sdk: PlaywrightUISDK
   mobileViewport: void
 }
 
 export const test = base.extend<SudokuFixtures>({
+  // Pass-through request interception, auto for every test, scoped to the
+  // config-spawned dev server (PLAYWRIGHT_BASE_URL unset): that transport
+  // fires ~17 parallel untransformed module requests per cold page, and bare
+  // Chromium contexts on this host burst-fail them with
+  // ERR_INSUFFICIENT_RESOURCES (bare control fails 5/5, pass-through passes
+  // 6/6; reproduced at main before this branch). Registering any route
+  // handler moves the fetches through the interception layer, which removes
+  // the burst failure; no request is modified. External transports (preview,
+  // CI production artifacts) serve static files and never burst, so they run
+  // interception-free.
+  _passthroughRoute: [
+    async ({ page }, use) => {
+      if (process.env['PLAYWRIGHT_BASE_URL']) {
+        await use()
+        return
+      }
+      await page.route('**/*', (route) => route.continue())
+      await use()
+    },
+    { auto: true },
+  ],
   // Capture console debug messages to a log file for debug traces
   // This writes matching DEBUG_SAVE/DEBUG_ERASE lines to frontend/console-debug.log
   // It uses page.on('console') which runs inside the test process

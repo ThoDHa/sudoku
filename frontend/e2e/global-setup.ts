@@ -34,6 +34,15 @@ async function globalSetup(config: FullConfig) {
   const browser = await chromium.launch()
   const context = await browser.newContext()
   const page = await context.newPage()
+  // Pass-through interception, scoped to the config-spawned dev server
+  // (PLAYWRIGHT_BASE_URL unset): bare contexts burst-fail that transport's
+  // parallel dev-module requests with ERR_INSUFFICIENT_RESOURCES (same
+  // workaround and scoping as e2e/fixtures.ts _passthroughRoute, which
+  // covers the tests themselves). External transports run interception-free.
+  const passthrough = !process.env['PLAYWRIGHT_BASE_URL']
+  if (passthrough) {
+    await page.route('**/*', (route) => route.continue())
+  }
 
   // Navigate to the app to set localStorage
   const baseURL = config.projects[0]?.use?.baseURL || 'http://localhost:5173'

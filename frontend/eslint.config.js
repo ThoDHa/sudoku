@@ -101,7 +101,7 @@ export default tseslint.config(
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
 
       // strictTypeChecked rollout is COMPLETE: every type-checked rule is
-      // enforced except the three permanent justified-OFF cases below. The
+      // enforced except the two permanent justified-OFF cases below. The
       // staged off-block that accompanied the incremental adoption (FE-2-1)
       // has been fully retired — every staged rule was re-enabled once its
       // findings were cleared.
@@ -112,12 +112,6 @@ export default tseslint.config(
       // throw->rejection wrapping, with no await expression today. Removing
       // async would either break callers or change throw semantics for no gain.
       '@typescript-eslint/require-await': 'off',
-      // no-implied-eval: wasm.worker.ts uses `new Function(scriptText)()` as the
-      // documented fallback to load wasm_exec.js in module workers, where
-      // importScripts is unavailable. The worker prefers importScripts and only
-      // reaches this path when it is absent; there is no eval-free alternative
-      // for executing a fetched script string in a module worker.
-      '@typescript-eslint/no-implied-eval': 'off',
       // no-unnecessary-condition: this codebase deliberately keeps defensive
       // guards that the rule's type-level analysis flags as unnecessary but
       // that protect real runtime paths where types diverge from reality —
