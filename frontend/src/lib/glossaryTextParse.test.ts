@@ -95,6 +95,19 @@ describe('parseText regex metacharacters', () => {
   it('does not match metacharacter-quantifier lookalikes', () => {
     expect(glossarySegments('BUGG1 and BUG1 are not terms')).toEqual([])
   })
+
+  it('resolves the matched segment through the same capture the map lookup keys on', () => {
+    // The capture group is the only alternation group (the whole term), so the
+    // map lookup and the emitted segment share one source; a lookup keyed on
+    // anything else would return undefined and unlink the term.
+    const pincer = GLOSSARY.find((t) => t.term === 'Pincer')
+    expect(pincer).toBeDefined()
+    expect(parseText('a pincer move')).toEqual([
+      { type: 'text', content: 'a ' },
+      { type: 'glossary', content: 'pincer', term: pincer },
+      { type: 'text', content: ' move' },
+    ])
+  })
 })
 
 describe('parseText state independence', () => {
