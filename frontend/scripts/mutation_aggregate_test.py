@@ -230,7 +230,7 @@ class GateTests(unittest.TestCase):
             rc_split = agg.main(argv + ["--report-timeouts"])
         self.assertEqual(rc_plain, 0)
         self.assertEqual(rc_split, 0)
-        gate_line = ("mutation-gate: OK test 75.0% (floor 50%) "
+        gate_line = ("mutation-gate: OK test 75.0% (floor 50.00%) "
                      "[shards=1 caught=3 escaped=1 ignored=0 total=4]\n")
         self.assertEqual(plain.getvalue(), gate_line)
         self.assertEqual(

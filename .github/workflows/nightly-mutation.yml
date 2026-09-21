@@ -261,10 +261,10 @@ jobs:
 
       # The floor is read from api/mutation-floors.json's frontend block, the
       # same file the Go gates read; its 'sources' entry carries the provenance
-      # (raised from 0 by 0e88a87 after nightly 32331041489 and dispatch
-      # 32420620093 corroborated at 97.7%, held at the integer 97 because this
-      # gate prints the floor with :.0f). Per the ratchet in that file, the
-      # number only ever rises, and it rises by measuring rather than by editing.
+      # (raised from 0 by 0e88a87, corroborated by dispatch 32420620093, and
+      # ratcheted to the fractional 99.81 by propose from run 35054796302).
+      # Per the ratchet in that file, the number only ever rises, and it rises
+      # by measuring rather than by editing.
       #
       # --report-timeouts prints the Timeout split (loop-kills, clock-kills,
       # unclassified) after the gate line, so a kill the clock earned rather
