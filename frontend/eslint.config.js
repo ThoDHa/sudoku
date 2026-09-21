@@ -101,7 +101,7 @@ export default tseslint.config(
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
 
       // strictTypeChecked rollout is COMPLETE: every type-checked rule is
-      // enforced except the three permanent justified-OFF cases below. The
+      // enforced except the two permanent justified-OFF cases below. The
       // staged off-block that accompanied the incremental adoption (FE-2-1)
       // has been fully retired — every staged rule was re-enabled once its
       // findings were cleared.

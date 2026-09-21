@@ -25,14 +25,22 @@ type SudokuFixtures = {
 }
 
 export const test = base.extend<SudokuFixtures>({
-  // Pass-through request interception, auto for every test. Registering any
-  // route handler moves Chromium's fetches through the interception layer,
-  // which eliminates the ERR_INSUFFICIENT_RESOURCES burst this host's bare
-  // contexts suffer when a dev-server page fires ~17 parallel module requests
-  // under memory pressure (bare control fails 5/5, pass-through passes 6/6;
-  // reproduced at main before this branch). No request is modified.
+  // Pass-through request interception, auto for every test, scoped to the
+  // config-spawned dev server (PLAYWRIGHT_BASE_URL unset): that transport
+  // fires ~17 parallel untransformed module requests per cold page, and bare
+  // Chromium contexts on this host burst-fail them with
+  // ERR_INSUFFICIENT_RESOURCES (bare control fails 5/5, pass-through passes
+  // 6/6; reproduced at main before this branch). Registering any route
+  // handler moves the fetches through the interception layer, which removes
+  // the burst failure; no request is modified. External transports (preview,
+  // CI production artifacts) serve static files and never burst, so they run
+  // interception-free.
   _passthroughRoute: [
     async ({ page }, use) => {
+      if (process.env['PLAYWRIGHT_BASE_URL']) {
+        await use()
+        return
+      }
       await page.route('**/*', (route) => route.continue())
       await use()
     },

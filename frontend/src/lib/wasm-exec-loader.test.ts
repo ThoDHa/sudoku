@@ -61,4 +61,45 @@ describe('loadGoRuntime', () => {
     )
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
+
+  it('wraps a dev fetch network rejection with the fetch error as cause', async () => {
+    vi.stubEnv('DEV', true)
+    const networkError = new TypeError('fetch failed')
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(networkError)
+
+    const caught: Error & { cause?: unknown } = await loadGoRuntime(
+      'http://localhost:5173/wasm_exec.js',
+    ).then(
+      () => {
+        throw new Error('expected rejection')
+      },
+      (e: Error & { cause?: unknown }) => e,
+    )
+
+    expect(caught.message).toContain('Failed to fetch wasm_exec.js')
+    expect(caught.cause).toBe(networkError)
+  })
+
+  it('wraps a dev blob-import rejection with that error as cause', async () => {
+    vi.stubEnv('DEV', true)
+    // A top-level throw inside the fetched module: the blob import (which
+    // browsers resolve but Node's loader does not) fails on this content.
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('throw new Error("module boot failed")', {
+        status: 200,
+        headers: { 'Content-Type': 'text/javascript' },
+      }),
+    )
+
+    const caught: Error & { cause?: unknown } = await loadGoRuntime(
+      'http://localhost:5173/wasm_exec.js',
+    ).then(
+      () => {
+        throw new Error('expected rejection')
+      },
+      (e: Error & { cause?: unknown }) => e,
+    )
+
+    expect(caught.message).toContain('Failed to import wasm_exec.js as a blob module')
+  })
 })
