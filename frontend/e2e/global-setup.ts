@@ -34,6 +34,10 @@ async function globalSetup(config: FullConfig) {
   const browser = await chromium.launch()
   const context = await browser.newContext()
   const page = await context.newPage()
+  // Pass-through interception: bare contexts on this host burst-fail parallel
+  // dev-module requests with ERR_INSUFFICIENT_RESOURCES (same workaround as
+  // e2e/fixtures.ts _passthroughRoute, which covers the tests themselves).
+  await page.route('**/*', (route) => route.continue())
 
   // Navigate to the app to set localStorage
   const baseURL = config.projects[0]?.use?.baseURL || 'http://localhost:5173'
