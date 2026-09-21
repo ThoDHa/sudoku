@@ -98,7 +98,7 @@ jobs:
           # non-empty is the selected measuring run. Expired artifacts still
           # count as produced; the expiry leg below judges their liveness.
           runs=$(gh run list --workflow=nightly-mutation.yml --status=success \
-            --limit 15 --json databaseId,headSha \
+            --limit 30 --json databaseId,headSha \
             --jq '.[] | [.databaseId, .headSha] | @tsv')
           measuring_run=""
           measuring_sha=""
@@ -119,10 +119,14 @@ jobs:
             fi
           done <<< "$runs"
           if [ -z "$measuring_run" ]; then
-            # No run in the window measured anything (a month of nightly
-            # skip-nights, or a first run on a fresh repo). Fall back to the
-            # plain latest success: with no live artifacts the expiry leg
-            # forces a run, which is the safe direction.
+            # No run in the window measured anything (a full window of
+            # skip-nights, or a first run on a fresh repo). The window must
+            # reach the still-live measuring run through a full skip-night
+            # stretch: at least artifact retention (30 days) minus the 2-day
+            # expiry slack above, plus one for the measuring run itself; 30
+            # satisfies it. Fall back to the plain latest success: with no
+            # live artifacts the expiry leg forces a run, which is the safe
+            # direction.
             measuring_run="$latest_run"
             measuring_sha="$latest_sha"
           fi
