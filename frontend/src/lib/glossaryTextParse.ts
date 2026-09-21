@@ -56,16 +56,19 @@ export function parseText(text: string): TextSegment[] {
 
   let match: RegExpExecArray | null
   while ((match = termPattern.exec(text)) !== null) {
-    const matchedTerm = match[1]
-    const term = matchedTerm ? glossaryMap.get(matchedTerm.toLowerCase()) : undefined
-    if (term) {
-      matches.push({
-        index: match.index,
-        length: match[0].length,
-        text: match[0],
-        term,
-      })
-    }
+    // Group 1 is the pattern's only alternation group and the pattern is built
+    // from exactly the glossaryMap keys, so the lookup always resolves and the
+    // emitted segment is keyed on the same captured term. The assertions are
+    // provably safe for that reason; an `as` cast here would suppress mutant
+    // generation across the lookup.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const term = glossaryMap.get(match[1]!.toLowerCase())!
+    matches.push({
+      index: match.index,
+      length: match[0].length,
+      text: match[0],
+      term,
+    })
   }
 
   // exec with the g flag yields matches in index order and never overlapping,
