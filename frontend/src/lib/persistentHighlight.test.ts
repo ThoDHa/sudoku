@@ -8,7 +8,7 @@ import {
   countPendingHintedItems,
   resolvePersistentHighlight,
 } from './persistentHighlight'
-import { createMockMoveHighlight } from '../test-utils'
+import { createMockMoveHighlight, type Overrides } from '../test-utils'
 import { addCandidate } from './candidatesUtils'
 
 const IDX = (row: number, col: number): number => row * 9 + col
@@ -37,7 +37,7 @@ function candidatesWith(notes: { row: number; col: number; digits: number[] }[])
   return candidates
 }
 
-function eliminationMove(overrides?: Partial<MoveHighlight>): MoveHighlight {
+function eliminationMove(overrides?: Overrides<MoveHighlight>): MoveHighlight {
   return createMockMoveHighlight({
     action: 'eliminate',
     digit: 0,
@@ -323,6 +323,76 @@ describe('resolvePersistentHighlight', () => {
     expect(resolved.highlight.eliminations).toEqual(move.eliminations)
     expect(resolved.highlight.targets).toEqual(move.targets)
     expect(resolved.pendingItemCount).toBe(2)
+  })
+
+  it('keeps an unperformed placement pending while the cell only carries the digit as a note', () => {
+    const move = createMockMoveHighlight({
+      action: 'assign',
+      digit: 5,
+      targets: [{ row: 0, col: 2 }],
+    })
+    const candidates = candidatesWith([{ row: 0, col: 2, digits: [5] }])
+
+    const resolved = resolvePersistentHighlight(move, emptyBoard(), candidates)
+
+    expect(resolved).toEqual({
+      highlight: { ...move, eliminations: [], targets: [{ row: 0, col: 2 }] },
+      pendingItemCount: 1,
+    })
+    expect(countPendingHintedItems(move, emptyBoard(), candidates)).toBe(1)
+  })
+
+  it('drops resolved eliminations from the shrunk highlight while a note addition is pending', () => {
+    const move = createMockMoveHighlight({
+      action: 'candidate',
+      digit: 6,
+      targets: [{ row: 6, col: 5 }],
+      eliminations: [{ row: 1, col: 1, digit: 4 }],
+    })
+    // [6,5] got its note (addition performed); [1,1] still carries note 4.
+    const candidates = candidatesWith([
+      { row: 6, col: 5, digits: [6] },
+      { row: 1, col: 1, digits: [4] },
+    ])
+
+    const resolved = resolvePersistentHighlight(move, emptyBoard(), candidates)
+
+    expect(resolved.highlight.eliminations).toEqual([{ row: 1, col: 1, digit: 4 }])
+    expect(resolved.highlight.targets).toEqual([])
+    expect(resolved.pendingItemCount).toBe(1)
+  })
+
+  it('keeps a pending target of another kind from leaking into the shrunk targets', () => {
+    const move = createMockMoveHighlight({
+      action: 'candidate',
+      digit: 6,
+      targets: [{ row: 5, col: 5 }],
+      eliminations: [{ row: 5, col: 5, digit: 4 }],
+    })
+    // [5,5] carries note 6 (addition performed) and note 4 (elimination pending).
+    const candidates = candidatesWith([{ row: 5, col: 5, digits: [4, 6] }])
+
+    const resolved = resolvePersistentHighlight(move, emptyBoard(), candidates)
+
+    // The note addition resolved, so the target shrinks away even though the
+    // same cell still has a pending elimination of a different kind.
+    expect(resolved.highlight.targets).toEqual([])
+    expect(resolved.highlight.eliminations).toEqual([{ row: 5, col: 5, digit: 4 }])
+    expect(resolved.pendingItemCount).toBe(1)
+  })
+
+  it('resolves a targetless unmodeled move to empty arrays rather than passthrough junk', () => {
+    const move = eliminationMove({ targets: undefined })
+
+    const resolved = resolvePersistentHighlight(
+      move,
+      boardWith([{ row: 1, col: 1, digit: 4 }]),
+      new Uint16Array(81),
+    )
+
+    expect(resolved.highlight.targets).toEqual([])
+    expect(resolved.highlight.eliminations).toEqual([])
+    expect(resolved.pendingItemCount).toBe(0)
   })
 
   it('keeps targets untouched for unmodeled-action moves regardless of board state', () => {
