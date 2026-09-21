@@ -176,7 +176,7 @@ def main(argv=None):
     eff = efficacy(caught, escaped)
     status = "OK" if eff >= args.floor else "FAIL"
     print(f"mutation-gate: {status} {args.label} {eff:.1f}% (floor "
-          f"{args.floor:.0f}%) [shards={len(reports)} caught={caught} "
+          f"{args.floor:.2f}%) [shards={len(reports)} caught={caught} "
           f"escaped={escaped} ignored={ignored} total={total}]")
     if split_lines is not None:
         for line in split_lines:
