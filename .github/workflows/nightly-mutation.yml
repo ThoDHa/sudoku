@@ -53,8 +53,17 @@ jobs:
   # Nightly runs fire regardless of repo activity, but this workflow is the
   # most expensive thing the repo schedules (hours across the shard matrix)
   # and mutating an unchanged tree reproduces the previous run's numbers
-  # exactly. The gate runs the suite when EITHER holds:
-  #   - main's head differs from the latest successful run's head (skip only
+  # exactly. The comparison base is the latest MEASURING run: the newest
+  # successful run that produced mutation artifacts, chosen by one bounded
+  # run-list query plus a newest-first artifact count per run. A green
+  # skip-night carries no artifacts (every downstream job is skipped when the
+  # gate says no), and using one as the base flips the expiry leg into
+  # alternating full runs on any multi-day-quiet tree: skip, then run to
+  # refresh artifacts that were never gone, then skip again. With no
+  # measuring run in the window the plain latest success stands in, and the
+  # expiry leg then forces a run, the safe direction. The gate runs the
+  # suite when EITHER holds:
+  #   - main's head differs from the latest measuring run's head (skip only
   #     when the exact tree was already mutated), OR
   #   - that run's artifacts expire within the next 2 days (they live 30),
   #     before the next nightly could refresh them; a quiet repo followed by
@@ -84,24 +93,53 @@ jobs:
             exit 0
           fi
           head=$(gh api repos/${GITHUB_REPOSITORY}/commits/main --jq .sha)
-          last_run=$(gh run list --workflow=nightly-mutation.yml --status=success \
-            --limit 1 --json databaseId --jq '.[0].databaseId // empty')
-          last_sha=$(gh run list --workflow=nightly-mutation.yml --status=success \
-            --limit 1 --json headSha --jq '.[0].headSha // empty')
-          if [ -z "$last_sha" ] || [ "$last_sha" != "$head" ]; then
-            echo "main moved since the last successful run (${last_sha:-none} -> $head); running"
+          # One run-list call, newest first, then a bounded newest-first
+          # artifact count per run: the first run whose artifact list is
+          # non-empty is the selected measuring run. Expired artifacts still
+          # count as produced; the expiry leg below judges their liveness.
+          runs=$(gh run list --workflow=nightly-mutation.yml --status=success \
+            --limit 15 --json databaseId,headSha \
+            --jq '.[] | [.databaseId, .headSha] | @tsv')
+          measuring_run=""
+          measuring_sha=""
+          latest_run=""
+          latest_sha=""
+          while read -r run_id run_sha; do
+            [ -n "$run_id" ] || continue
+            if [ -z "$latest_run" ]; then
+              latest_run="$run_id"
+              latest_sha="$run_sha"
+            fi
+            artifacts=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
+              --jq .total_count)
+            if [ "$artifacts" -gt 0 ]; then
+              measuring_run="$run_id"
+              measuring_sha="$run_sha"
+              break
+            fi
+          done <<< "$runs"
+          if [ -z "$measuring_run" ]; then
+            # No run in the window measured anything (a month of nightly
+            # skip-nights, or a first run on a fresh repo). Fall back to the
+            # plain latest success: with no live artifacts the expiry leg
+            # forces a run, which is the safe direction.
+            measuring_run="$latest_run"
+            measuring_sha="$latest_sha"
+          fi
+          if [ -z "$measuring_sha" ] || [ "$measuring_sha" != "$head" ]; then
+            echo "main moved since the last measuring run (${measuring_sha:-none} -> $head); running"
             echo "should-run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           expiry_cutoff=$(( $(date +%s) + 2*24*60*60 ))
           refresh_needed=1
-          if [ -n "$last_run" ]; then
-            earliest_expiry=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${last_run}/artifacts" \
+          if [ -n "$measuring_run" ]; then
+            earliest_expiry=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${measuring_run}/artifacts" \
               --jq '[.artifacts[] | select(.expired == false) | .expires_at] | min // ""')
             if [ -n "$earliest_expiry" ] && \
                [ "$(date -u -d "$earliest_expiry" +%s)" -ge "$expiry_cutoff" ]; then
               refresh_needed=0
-              echo "head $head was already mutated and its artifacts live until $earliest_expiry, past the next nightly; skipping"
+              echo "head $head was already mutated by run $measuring_run and its artifacts live until $earliest_expiry, past the next nightly; skipping"
             fi
           fi
           if [ "$refresh_needed" -eq 1 ]; then
