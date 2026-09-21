@@ -102,9 +102,9 @@ describe('parseText regex metacharacters', () => {
     // anything else would return undefined and unlink the term.
     const pincer = GLOSSARY.find((t) => t.term === 'Pincer')
     expect(pincer).toBeDefined()
-    expect(parseText('a pincer move')).toEqual([
+    expect(parseText('a Pincer move')).toEqual([
       { type: 'text', content: 'a ' },
-      { type: 'glossary', content: 'pincer', term: pincer },
+      { type: 'glossary', content: 'Pincer', term: pincer },
       { type: 'text', content: ' move' },
     ])
   })

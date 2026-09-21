@@ -491,6 +491,7 @@ describe('useHighlightState', () => {
         'clearAfterUserCandidateOp',
         'clearHighlightsKeepSelection',
         'clearAllAndDeselectKeepPersistent',
+        'clearAfterDigitToggle',
       ] as const
 
       for (const action of pairActions) {
