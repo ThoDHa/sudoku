@@ -23,6 +23,14 @@
  * @returns Resolves once the module has executed and defined `Go`.
  * @throws The underlying import or fetch failure when the module cannot load.
  */
+// The cause field is attached via a widened type: this repo's ES2020 lib
+// predates both ErrorOptions and Error.cause. Never returns.
+function throwWithCause(message: string, cause: unknown): never {
+  const wrapped: Error & { cause?: unknown } = new Error(message)
+  wrapped.cause = cause
+  throw wrapped
+}
+
 export async function loadGoRuntime(url: string): Promise<void> {
   try {
     await import(/* @vite-ignore */ url)
@@ -34,33 +42,20 @@ export async function loadGoRuntime(url: string): Promise<void> {
     try {
       response = await fetch(url)
     } catch (fetchError) {
-      // The cause field is attached via a widened type: this repo's ES2020
-      // lib predates both ErrorOptions and Error.cause.
-      const wrapped: Error & { cause?: unknown } = new Error(
-        `Failed to fetch wasm_exec.js: ${String(fetchError)}`,
-      )
-      wrapped.cause = fetchError
-      throw wrapped
+      throwWithCause(`Failed to fetch wasm_exec.js: ${String(fetchError)}`, fetchError)
     }
     if (!response.ok) {
-      // The cause field is attached via a widened type: this repo's ES2020
-      // lib predates both ErrorOptions and Error.cause.
-      const wrapped: Error & { cause?: unknown } = new Error(
-        `Failed to fetch wasm_exec.js: ${response.status}`,
-      )
-      wrapped.cause = importError
-      throw wrapped
+      throwWithCause(`Failed to fetch wasm_exec.js: ${response.status}`, importError)
     }
     const source = await response.text()
     const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))
     try {
       await import(/* @vite-ignore */ blobUrl)
     } catch (blobImportError) {
-      const wrapped: Error & { cause?: unknown } = new Error(
+      throwWithCause(
         `Failed to import wasm_exec.js as a blob module: ${String(blobImportError)}`,
+        blobImportError,
       )
-      wrapped.cause = blobImportError
-      throw wrapped
     } finally {
       URL.revokeObjectURL(blobUrl)
     }

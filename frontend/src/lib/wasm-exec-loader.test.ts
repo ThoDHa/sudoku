@@ -82,8 +82,11 @@ describe('loadGoRuntime', () => {
 
   it('wraps a dev blob-import rejection with that error as cause', async () => {
     vi.stubEnv('DEV', true)
-    // A top-level throw inside the fetched module: the blob import (which
-    // browsers resolve but Node's loader does not) fails on this content.
+    // A top-level throw inside the fetched module content. Node's loader
+    // rejects the blob: import on the scheme before the content ever parses,
+    // so this content is not what Node fails on; it models the equivalent
+    // in-module failure a browser's blob import would surface, keeping the
+    // fixture honest for the path the fallback exists for.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('throw new Error("module boot failed")', {
         status: 200,
@@ -101,5 +104,6 @@ describe('loadGoRuntime', () => {
     )
 
     expect(caught.message).toContain('Failed to import wasm_exec.js as a blob module')
+    expect(caught.cause).toBeDefined()
   })
 })
