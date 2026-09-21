@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { loadGoRuntime } from './wasm-exec-loader'
 
 // Node/vitest's ESM loader imports file: and data: URLs only, and vitest
@@ -15,6 +15,8 @@ describe('loadGoRuntime', () => {
       value: undefined,
       configurable: true,
     })
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
   })
 
   it('executes the ES module at the given URL', async () => {
@@ -23,7 +25,40 @@ describe('loadGoRuntime', () => {
     expect(globalThis[FIXTURE_MARKER as keyof typeof globalThis]).toBe(true)
   })
 
-  it('rejects when the module at the URL fails to load', async () => {
+  it('rejects when the module at the URL fails to load outside dev', async () => {
+    vi.stubEnv('DEV', false)
+
     await expect(loadGoRuntime(rejectingModuleUrl)).rejects.toThrow('boot failed')
+  })
+
+  it('falls back to a plainly fetched copy in dev when the import fails', async () => {
+    vi.stubEnv('DEV', true)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(`globalThis.${FIXTURE_MARKER} = true`, {
+        status: 200,
+        headers: { 'Content-Type': 'text/javascript' },
+      }),
+    )
+
+    // Node's ESM loader cannot import the http: URL (nor a blob: URL, which
+    // only browsers resolve), so both import attempts fail here; the assertable
+    // contract is that the fallback fetched the same URL, which is the step
+    // the browser then blob-imports.
+    await expect(loadGoRuntime('http://localhost:5173/wasm_exec.js')).rejects.toThrow()
+
+    expect(fetchSpy).toHaveBeenCalledWith('http://localhost:5173/wasm_exec.js')
+    expect(globalThis[FIXTURE_MARKER as keyof typeof globalThis]).toBeUndefined()
+  })
+
+  it('surfaces a failed dev fetch instead of masking it', async () => {
+    vi.stubEnv('DEV', true)
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('nope', { status: 404 }))
+
+    await expect(loadGoRuntime('http://localhost:5173/wasm_exec.js')).rejects.toThrow(
+      'Failed to fetch wasm_exec.js: 404',
+    )
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 })
