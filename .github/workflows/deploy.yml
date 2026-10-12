@@ -352,28 +352,38 @@ jobs:
           echo "allure-results-all contents:"
           ls -laR allure-results-all || echo "Directory empty"
 
-      # Best-effort: pull the latest successful nightly runs so (a) their Allure
-      # results fold into the one combined report and (b) the portal can link the
-      # mutation and profiling reports. These live in separate workflows'
-      # artifacts. If a run does not exist yet or a download fails, the combined
-      # Allure and the portal simply omit those pieces; the deploy is unaffected.
+      # Best-effort: pull the nightly runs with live artifacts so (a) their
+      # Allure results fold into the one combined report and (b) the portal
+      # can link the mutation and profiling reports. These live in separate
+      # workflows' artifacts. The newest successful run with non-expired
+      # artifacts is picked by walking recent successful runs
+      # (.github/scripts/pick-nightly-run.sh), because the latest
+      # successful run alone can be a skip-mode run with zero artifacts
+      # that merely shadows the run holding the live reports. If a run
+      # does not qualify or a download fails, the combined Allure and the
+      # portal simply omit those pieces; the deploy is unaffected.
       - name: Fetch latest nightly reports
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           mkdir -p nightly-artifacts
           for wf in nightly-mutation.yml nightly-profiling.yml; do
-            run_id=$(gh run list --workflow="$wf" --status=success \
-              --limit 1 --json databaseId --jq '.[0].databaseId // empty')
-            if [ -n "$run_id" ]; then
-              echo "Downloading artifacts from $wf run $run_id"
-              gh run download "$run_id" --dir nightly-artifacts \
-                || echo "download failed for $wf; its reports will be omitted"
-            else
-              echo "No successful $wf run found; its reports will be omitted"
+            if ! selection=$(bash .github/scripts/pick-nightly-run.sh "$wf"); then
+              echo "Artifact walk failed for $wf; its reports will be omitted"
+              continue
             fi
+            if [ -z "$selection" ]; then
+              echo "no run with non-expired artifacts among the last 30 successful runs of $wf; its reports will be omitted"
+              continue
+            fi
+            run_id=${selection%% *}
+            earliest_expiry=${selection#* }
+            echo "Downloading artifacts from $wf run $run_id (artifacts live until $earliest_expiry)"
+            gh run download "$run_id" --dir nightly-artifacts \
+              || echo "download failed for $wf; its reports will be omitted"
           done
 
       # Coverage reports are produced by this run's own test jobs; pull them into
