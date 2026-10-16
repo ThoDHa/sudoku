@@ -433,8 +433,9 @@ mutation-gate:
 # The recorded note states the measurement conditions per toolchain: the Go
 # scopes ran under go-mutesting with the sweep's timeout and memory limits,
 # the frontend scopes under StrykerJS's own defaults. The nightly's lag check
-# proposes from the lower of this and the previous run's reports; this local
-# target has one run and raises from it alone.
+# proposes from the lower of this and the previous run's reports (from this
+# run alone when no previous reports were available); this local target always
+# has one run and raises from it.
 mutation-ratchet:
 	@$(MUTATION_FLOORS) propose --in-place \
 		--package-dir $(MUTATION_REPORT_DIR) \

@@ -525,10 +525,16 @@ def cmd_propose(args):
                 for scope in PACKAGE_PKGS),
             "package")
     if args.package_dir:
+        report_exists = {
+            scope: os.path.isfile(report_path(args.package_dir, scope))
+            for scope in PACKAGE_PKGS}
+        warn_on_reportless_dir(
+            "--package-dir", args.package_dir, sum(report_exists.values()),
+            "package")
         for scope in PACKAGE_PKGS:
             path = report_path(args.package_dir, scope)
             # A scope nobody ran this time is simply not measured.
-            if not os.path.isfile(path):
+            if not report_exists[scope]:
                 continue
             measured = measured_or_skipped([path], scope)
             if corroborated:

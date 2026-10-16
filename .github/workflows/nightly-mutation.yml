@@ -783,8 +783,9 @@ jobs:
             echo
             echo "Every number below is a floor that has been earned and is not"
             echo "being enforced. This diff is the raise the lower of this run"
-            echo "and the previous one supports; the command below, run locally,"
-            echo "raises from this run alone:"
+            echo "and the previous one supports (this run alone when no previous"
+            echo "reports were available); the command below, run locally, raises"
+            echo "from this run alone:"
             echo
             echo '```'
             echo "make mutation-ratchet SHARDS_DIR=<downloaded shards> FRONTEND_DIR=<downloaded frontend shards> RUN=$GITHUB_RUN_ID"

@@ -820,6 +820,36 @@ class ProposeReportlessDirWarnings(unittest.TestCase):
             self.assertNotIn("produced no reports", err)
             self.assertEqual(data["frontend"]["hooks"], 100.0)
 
+    def test_a_nonexistent_package_dir_warns_and_ratchets_nothing(self):
+        """--package-dir is the one flag the Makefile remedy always passes, so
+        a fresh clone or typo'd package dir must not ratchet the Go families
+        silently the way a typo'd frontend dir once went unnoticed."""
+        with tempfile.TemporaryDirectory() as tmp:
+            floors = write_floors(tmp, {"dp": 92.8, "human": 90},
+                                  sources={"dp": SOURCE, "human": SOURCE})
+            missing = os.path.join(tmp, "pkgs-typo")
+            rc, err, data = self._propose(tmp, floors, ["--package-dir", missing])
+            self.assertEqual(rc, 0)
+            self.assertIn(
+                f"warning: --package-dir {missing} produced no reports", err)
+            self.assertIn("package family was not ratcheted", err)
+            self.assertEqual(data["floors"]["dp"], 92.8)
+            self.assertEqual(data["floors"]["human"], 90)
+
+    def test_a_partially_populated_package_dir_does_not_warn(self):
+        """Some scopes reporting is the ordinary shape (a partial sweep); the
+        warning is for a directory that yields nothing at all, and the
+        unreported scopes stay covered by their UNSET gate lines."""
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(package_dir(tmp, "dp"), killed=250, escaped=0)
+            floors = write_floors(tmp, {"dp": 92.8, "human": 90},
+                                  sources={"dp": SOURCE, "human": SOURCE})
+            rc, err, data = self._propose(tmp, floors, ["--package-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertNotIn("produced no reports", err)
+            self.assertEqual(data["floors"]["dp"], 100.0)
+            self.assertEqual(data["floors"]["human"], 90)
+
 
 def frontend_shard_dir(root, scope, name):
     """Mirror the CI artifact layout for a frontend scope: one artifact per
@@ -1199,6 +1229,11 @@ class LagCheckDownloads(unittest.TestCase):
             forwardings, "the mutation-ratchet recipe forwards no optional "
             "make variables; the artifact families have nowhere to ride")
         for variable, flag in forwardings:
+            if flag.startswith("--previous-"):
+                # Mirror of side A's previous-exemption: the recipe is within
+                # its rights to grow a corroborated local forwarding that the
+                # step need not carry.
+                continue
             self.assertIn(
                 flag, step_flags,
                 f"the recipe forwards $({variable}) as {flag}, but the "
