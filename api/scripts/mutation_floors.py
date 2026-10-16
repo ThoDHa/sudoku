@@ -451,6 +451,25 @@ def corroborate(measured, previous, what):
     return min(measured, previous)
 
 
+def warn_on_reportless_dir(flag, reports_dir, report_count, family):
+    """Print one stderr line when an explicitly named input directory holds no
+    reports.
+
+    A nonexistent or report-less directory walks to nothing, and propose then
+    exits 0 with that family's floors untouched: the fail-safe direction, and
+    also a silent one, in which a typo'd path reads exactly like a clean run
+    and the family goes unratcheted unnoticed. The warning names the flag and
+    the path and states the family was not ratcheted, without changing the
+    outcome: a report-less directory is a legitimate shape here (a scope=go
+    dispatch downloads no frontend artifacts), so it stays a warning rather
+    than an error.
+    """
+    if report_count == 0:
+        print(f"mutation-floors: warning: {flag} {reports_dir} produced no "
+              f"reports; the {family} family was not ratcheted",
+              file=sys.stderr)
+
+
 def cmd_propose(args):
     data = load(args.floors_file)
     out = copy.deepcopy(data)
@@ -499,6 +518,12 @@ def cmd_propose(args):
             return None
         return measured_or_skipped([path], f"previous {scope}")
 
+    if args.previous_package_dir:
+        warn_on_reportless_dir(
+            "--previous-package-dir", args.previous_package_dir,
+            sum(os.path.isfile(report_path(args.previous_package_dir, scope))
+                for scope in PACKAGE_PKGS),
+            "package")
     if args.package_dir:
         for scope in PACKAGE_PKGS:
             path = report_path(args.package_dir, scope)
@@ -511,7 +536,10 @@ def cmd_propose(args):
             apply(out["floors"], scope, scope, path, measured)
 
     if args.shards_dir:
-        by_shard = group_by_shard(agg.find_reports(args.shards_dir))
+        shard_reports = agg.find_reports(args.shards_dir)
+        warn_on_reportless_dir("--shards-dir", args.shards_dir,
+                               len(shard_reports), "techniques shards")
+        by_shard = group_by_shard(shard_reports)
         unknown = sorted(set(by_shard) - set(out["techniques_shards"]))
         if unknown:
             raise FloorsError(f"shards {unknown} have no entry in the floors file")
@@ -519,8 +547,13 @@ def cmd_propose(args):
         prev_agg_killed = prev_agg_escaped = 0
         prev_measured_shards = 0
         if args.previous_shards_dir:
+            prev_shard_reports = agg.find_reports(args.previous_shards_dir)
+            warn_on_reportless_dir("--previous-shards-dir",
+                                   args.previous_shards_dir,
+                                   len(prev_shard_reports),
+                                   "techniques shards")
             for name, paths in sorted(
-                    group_by_shard(agg.find_reports(args.previous_shards_dir)).items()):
+                    group_by_shard(prev_shard_reports).items()):
                 try:
                     eff, killed, escaped, _total = measure(
                         paths, f"previous shard {name}")
@@ -577,7 +610,10 @@ def cmd_propose(args):
             raise FloorsError(
                 "floors file has no 'frontend' block to hold the StrykerJS "
                 "scopes' floors (add one before proposing against them)")
-        by_scope = group_by_frontend_scope(find_frontend_reports(args.frontend_dir))
+        frontend_reports = find_frontend_reports(args.frontend_dir)
+        warn_on_reportless_dir("--frontend-dir", args.frontend_dir,
+                               len(frontend_reports), "frontend")
+        by_scope = group_by_frontend_scope(frontend_reports)
         unknown = sorted(set(by_scope) - set(out["frontend"]))
         if unknown:
             raise FloorsError(
@@ -586,8 +622,13 @@ def cmd_propose(args):
                 f"hold them)")
         prev_by_scope = {}
         if args.previous_frontend_dir:
+            prev_frontend_reports = find_frontend_reports(
+                args.previous_frontend_dir)
+            warn_on_reportless_dir("--previous-frontend-dir",
+                                   args.previous_frontend_dir,
+                                   len(prev_frontend_reports), "frontend")
             for scope, paths in group_by_frontend_scope(
-                    find_frontend_reports(args.previous_frontend_dir)).items():
+                    prev_frontend_reports).items():
                 eff = measured_or_skipped(paths, f"previous frontend {scope}",
                                           combine=combine_stryker)
                 if eff is not None:
