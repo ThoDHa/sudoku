@@ -737,6 +737,120 @@ class ProposeResilience(unittest.TestCase):
                                       "--package-dir", tmp, "--scope", "dp"]), 0)
 
 
+class ProposeReportlessDirWarnings(unittest.TestCase):
+    """An explicitly named directory that yields no reports must say so on
+    stderr, naming the flag and stating the family was not ratcheted. A typo'd
+    path walks to nothing and exits 0, which without the warning reads exactly
+    like a clean run, and the family goes unratcheted unnoticed. The outcome
+    must not change: a report-less directory is a legitimate shape (a scope=go
+    dispatch downloads no frontend artifacts), so this stays a warning."""
+
+    def _propose(self, tmp, floors_path, argv):
+        out = os.path.join(tmp, "candidate.json")
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            rc = mf.main(["--floors-file", floors_path, "propose", "--out", out,
+                          "--run", "999", "--recorded", "2026-08-04"] + argv)
+        data = None
+        if os.path.isfile(out):
+            with open(out) as f:
+                data = json.load(f)
+        return rc, err.getvalue(), data
+
+    def test_a_nonexistent_frontend_dir_warns_and_ratchets_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            floors = write_floors(tmp, {"dp": 100}, frontend={"hooks": 90})
+            missing = os.path.join(tmp, "frontend-typo")
+            rc, err, data = self._propose(tmp, floors,
+                                          ["--frontend-dir", missing])
+            self.assertEqual(rc, 0)
+            self.assertIn(
+                f"warning: --frontend-dir {missing} produced no reports", err)
+            self.assertIn("frontend family was not ratcheted", err)
+            self.assertEqual(data["frontend"]["hooks"], 90)
+
+    def test_a_nonexistent_shards_dir_warns_and_ratchets_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            floors = write_floors(tmp, {"techniques": 90},
+                                  shards={"formatter": None},
+                                  sources={"techniques": SOURCE})
+            missing = os.path.join(tmp, "shards-typo")
+            rc, err, data = self._propose(tmp, floors, ["--shards-dir", missing])
+            self.assertEqual(rc, 0)
+            self.assertIn(
+                f"warning: --shards-dir {missing} produced no reports", err)
+            self.assertIn("techniques shards family was not ratcheted", err)
+            self.assertEqual(data["techniques_shards"]["formatter"], None)
+
+    def test_each_reportless_dir_gets_its_own_warning_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            floors = write_floors(tmp, {"dp": 100, "techniques": 90},
+                                  shards={"formatter": None},
+                                  frontend={"hooks": 90},
+                                  sources={"techniques": SOURCE})
+            no_shards = os.path.join(tmp, "no-shards")
+            no_frontend = os.path.join(tmp, "no-frontend")
+            rc, err, _data = self._propose(tmp, floors, [
+                "--shards-dir", no_shards, "--frontend-dir", no_frontend])
+            self.assertEqual(rc, 0)
+            self.assertEqual(
+                re.findall(r"warning: (--[a-z-]+) \S+ produced no reports", err),
+                ["--shards-dir", "--frontend-dir"])
+
+    def test_an_empty_previous_dir_warns_without_changing_the_outcome(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "no-prev")
+            write_frontend_shard(now, "hooks", "a", killed=30, escaped=0)
+            floors = write_floors(tmp, {"dp": 100}, frontend={"hooks": 90})
+            rc, err, _data = self._propose(tmp, floors, [
+                "--frontend-dir", now, "--previous-frontend-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertIn(
+                f"warning: --previous-frontend-dir {prev} produced no reports",
+                err)
+            # The corroboration outcome is unchanged: a family only one run
+            # measured stays unraised, which corroborate already said.
+
+    def test_a_populated_dir_produces_no_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_frontend_shard(tmp, "hooks", "a", killed=30, escaped=0)
+            floors = write_floors(tmp, {"dp": 100}, frontend={"hooks": 90})
+            rc, err, data = self._propose(tmp, floors, ["--frontend-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertNotIn("produced no reports", err)
+            self.assertEqual(data["frontend"]["hooks"], 100.0)
+
+    def test_a_nonexistent_package_dir_warns_and_ratchets_nothing(self):
+        """--package-dir is the one flag the Makefile remedy always passes, so
+        a fresh clone or typo'd package dir must not ratchet the Go families
+        silently the way a typo'd frontend dir once went unnoticed."""
+        with tempfile.TemporaryDirectory() as tmp:
+            floors = write_floors(tmp, {"dp": 92.8, "human": 90},
+                                  sources={"dp": SOURCE, "human": SOURCE})
+            missing = os.path.join(tmp, "pkgs-typo")
+            rc, err, data = self._propose(tmp, floors, ["--package-dir", missing])
+            self.assertEqual(rc, 0)
+            self.assertIn(
+                f"warning: --package-dir {missing} produced no reports", err)
+            self.assertIn("package family was not ratcheted", err)
+            self.assertEqual(data["floors"]["dp"], 92.8)
+            self.assertEqual(data["floors"]["human"], 90)
+
+    def test_a_partially_populated_package_dir_does_not_warn(self):
+        """Some scopes reporting is the ordinary shape (a partial sweep); the
+        warning is for a directory that yields nothing at all, and the
+        unreported scopes stay covered by their UNSET gate lines."""
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(package_dir(tmp, "dp"), killed=250, escaped=0)
+            floors = write_floors(tmp, {"dp": 92.8, "human": 90},
+                                  sources={"dp": SOURCE, "human": SOURCE})
+            rc, err, data = self._propose(tmp, floors, ["--package-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertNotIn("produced no reports", err)
+            self.assertEqual(data["floors"]["dp"], 100.0)
+            self.assertEqual(data["floors"]["human"], 90)
+
+
 def frontend_shard_dir(root, scope, name):
     """Mirror the CI artifact layout for a frontend scope: one artifact per
     shard, named mutation-frontend-<scope>-<shard>, each carrying the Stryker
@@ -1079,6 +1193,52 @@ class LagCheckDownloads(unittest.TestCase):
             "the propose/fail step must carry no scope condition: scope "
             "filtering lives only in the download guards, and the propose "
             "step must run on every dispatch shape the job runs")
+
+    def test_the_propose_flags_match_the_makefile_ratchet_recipe(self):
+        """The lag check's propose and the Makefile's mutation-ratchet are two
+        hand-written invocations of one command, and the recipe once lagged the
+        workflow by --frontend-dir: the check detected a frontend lag and
+        printed a remedy that could not raise it, which is why the lag survived
+        three nights. Every non-previous flag the step passes must therefore
+        appear in the recipe, and every make variable the recipe forwards must
+        carry a flag the step passes: the two invocations cannot drift apart
+        without this test going red."""
+        job = _nightly_jobs()["floors-lag-check"]
+        step = job.split("Fail if the floors lag this measurement", 1)[1]
+        invoke = re.search(
+            r"mutation_floors\.py propose((?:[^\\\n]*\\\n)*[^\n]+)", step)
+        self.assertIsNotNone(invoke, "could not find the propose invocation")
+        step_flags = re.findall(r"--[a-z-]+", invoke.group(1))
+        with open(os.path.join(_REPO, "api", "Makefile")) as f:
+            makefile = f.read()
+        recipe = re.search(r"^mutation-ratchet:\n(?:\t.*\n)+", makefile, re.M)
+        self.assertIsNotNone(recipe, "could not find the mutation-ratchet recipe")
+        for flag in step_flags:
+            if flag.startswith("--previous-"):
+                # Corroboration is CI-only: a local ratchet has one run, so
+                # the recipe rightly has no counterpart to forward them to.
+                continue
+            self.assertIn(
+                flag, recipe.group(0),
+                f"the mutation-ratchet recipe does not pass {flag}, which the "
+                f"lag-check propose passes; the printed remedy cannot raise "
+                f"what the check detects")
+        forwardings = re.findall(
+            r"\$\(if \$\((\w+)\),(--[a-z-]+) \$\(\1\)\)", recipe.group(0))
+        self.assertTrue(
+            forwardings, "the mutation-ratchet recipe forwards no optional "
+            "make variables; the artifact families have nowhere to ride")
+        for variable, flag in forwardings:
+            if flag.startswith("--previous-"):
+                # Mirror of side A's previous-exemption: the recipe is within
+                # its rights to grow a corroborated local forwarding that the
+                # step need not carry.
+                continue
+            self.assertIn(
+                flag, step_flags,
+                f"the recipe forwards $({variable}) as {flag}, but the "
+                f"lag-check propose never passes {flag}: the recipe has "
+                f"drifted ahead of the check")
 
 
 class CanonicalFile(unittest.TestCase):
