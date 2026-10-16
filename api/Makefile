@@ -429,13 +429,19 @@ mutation-gate:
 # shard artifacts, and RUN to the workflow run id the reports came from, so the
 # provenance records where each number came from. A family whose variable is
 # unset is simply not ratcheted.
+#
+# The recorded note states the measurement conditions per toolchain: the Go
+# scopes ran under go-mutesting with the sweep's timeout and memory limits,
+# the frontend scopes under StrykerJS's own defaults. The nightly's lag check
+# proposes from the lower of this and the previous run's reports; this local
+# target has one run and raises from it alone.
 mutation-ratchet:
 	@$(MUTATION_FLOORS) propose --in-place \
 		--package-dir $(MUTATION_REPORT_DIR) \
 		$(if $(SHARDS_DIR),--shards-dir $(SHARDS_DIR)) \
 		$(if $(FRONTEND_DIR),--frontend-dir $(FRONTEND_DIR)) \
 		$(if $(RUN),--run $(RUN)) --recorded $$(date +%F) \
-		--note "Measured under --exec-timeout $(MUTATION_EXEC_TIMEOUT), ulimit -v $(MUTATION_ADDRESS_SPACE_KB)."
+		--note "Go scopes measured under go-mutesting --exec-timeout $(MUTATION_EXEC_TIMEOUT), ulimit -v $(MUTATION_ADDRESS_SPACE_KB); frontend scopes measured under StrykerJS defaults."
 
 # Remove mutation report artifacts (report.json, HTML, per-pkg config).
 mutation-clean:

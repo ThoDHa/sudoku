@@ -1080,6 +1080,47 @@ class LagCheckDownloads(unittest.TestCase):
             "filtering lives only in the download guards, and the propose "
             "step must run on every dispatch shape the job runs")
 
+    def test_the_propose_flags_match_the_makefile_ratchet_recipe(self):
+        """The lag check's propose and the Makefile's mutation-ratchet are two
+        hand-written invocations of one command, and the recipe once lagged the
+        workflow by --frontend-dir: the check detected a frontend lag and
+        printed a remedy that could not raise it, which is why the lag survived
+        three nights. Every non-previous flag the step passes must therefore
+        appear in the recipe, and every make variable the recipe forwards must
+        carry a flag the step passes: the two invocations cannot drift apart
+        without this test going red."""
+        job = _nightly_jobs()["floors-lag-check"]
+        step = job.split("Fail if the floors lag this measurement", 1)[1]
+        invoke = re.search(
+            r"mutation_floors\.py propose((?:[^\\\n]*\\\n)*[^\n]+)", step)
+        self.assertIsNotNone(invoke, "could not find the propose invocation")
+        step_flags = re.findall(r"--[a-z-]+", invoke.group(1))
+        with open(os.path.join(_REPO, "api", "Makefile")) as f:
+            makefile = f.read()
+        recipe = re.search(r"^mutation-ratchet:\n(?:\t.*\n)+", makefile, re.M)
+        self.assertIsNotNone(recipe, "could not find the mutation-ratchet recipe")
+        for flag in step_flags:
+            if flag.startswith("--previous-"):
+                # Corroboration is CI-only: a local ratchet has one run, so
+                # the recipe rightly has no counterpart to forward them to.
+                continue
+            self.assertIn(
+                flag, recipe.group(0),
+                f"the mutation-ratchet recipe does not pass {flag}, which the "
+                f"lag-check propose passes; the printed remedy cannot raise "
+                f"what the check detects")
+        forwardings = re.findall(
+            r"\$\(if \$\((\w+)\),(--[a-z-]+) \$\(\1\)\)", recipe.group(0))
+        self.assertTrue(
+            forwardings, "the mutation-ratchet recipe forwards no optional "
+            "make variables; the artifact families have nowhere to ride")
+        for variable, flag in forwardings:
+            self.assertIn(
+                flag, step_flags,
+                f"the recipe forwards $({variable}) as {flag}, but the "
+                f"lag-check propose never passes {flag}: the recipe has "
+                f"drifted ahead of the check")
+
 
 class CanonicalFile(unittest.TestCase):
     """The shipped floors file has to satisfy the contracts the tooling assumes."""
