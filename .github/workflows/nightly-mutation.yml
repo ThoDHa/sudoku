@@ -785,7 +785,7 @@ jobs:
             echo "being enforced. Raise them with:"
             echo
             echo '```'
-            echo "make mutation-ratchet SHARDS_DIR=<downloaded shards> RUN=$GITHUB_RUN_ID"
+            echo "make mutation-ratchet SHARDS_DIR=<downloaded shards> FRONTEND_DIR=<downloaded frontend shards> RUN=$GITHUB_RUN_ID"
             echo '```'
             echo
             echo '```diff'
